@@ -26,6 +26,10 @@ h2{font-size:13px;color:var(--mut);margin:20px 0 8px;text-transform:uppercase;le
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .co{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--tx);font:inherit;font-weight:600}
 .co small{color:var(--mut);font-weight:500}
+.co small.neg{color:var(--neg);font-weight:700}
+.ex{display:inline-flex;align-items:center;justify-content:center;width:1.2em;height:1.2em;border:2px solid var(--neg);border-radius:50%;color:var(--neg);font-size:.6em;font-weight:800;vertical-align:middle}
+.co small .ex{font-size:12px;border-width:1.5px}
+.tw{color:#ffb4b8}
 .lg{width:64px;height:64px;border-radius:12px;object-fit:contain;display:flex;align-items:center;justify-content:center;background:var(--bd);font-style:normal;font-weight:700;font-size:28px;color:var(--mut)}
 .item .lg{width:40px;height:40px;font-size:18px}
 .head{display:flex;align-items:center;gap:12px;margin:8px 0}
@@ -72,20 +76,25 @@ const fmt=v=>v.toFixed(2).replace('.',',');
 const num=s=>{s=String(s).trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?NaN:n};
 const saldo=id=>S.ops.filter(o=>o.empresaId===id).reduce((t,o)=>t+(o.cat==='passagem'?-o.valor:o.valor),0);
 const nm=id=>(S.empresas.find(e=>e.id===id)||{}).nome||'';
+const neg=id=>saldo(id)<-0.005;
+const base=id=>{const v=S.linhas.filter(l=>l.empresaId===id).map(l=>l.valor);return v.length?Math.max(...v):0};
+const low=id=>{const e=S.empresas.find(x=>x.id===id),m=e&&e.aviso!=null?e.aviso:2,b=base(id);return b>0&&saldo(id)<=m*b+0.005};
+const alerta=id=>neg(id)||low(id);
+const aviso=()=>neg(emp)?'Saldo negativo. Verificar.':(low(emp)?'Aviso de saldo baixo. Recarregar.':'');
 const logo=(e,src)=>(src||e.logo)?`<img class="lg" src="${src||e.logo}" alt="">`:`<i class="lg">${esc((e.nome||'?')[0]).toUpperCase()}</i>`;
-function toast(m,u){const t=$('#toast');t.innerHTML='<span>'+esc(m)+'</span>'+(u?'<button data-a="undo">Desfazer</button>':'');t.className='show';clearTimeout(tt);tt=setTimeout(()=>t.className='',5000)}
+function toast(m,u,w){const t=$('#toast');t.innerHTML='<span>'+esc(m)+(w?'<br><b class="tw">'+esc(w)+'</b>':'')+'</span>'+(u?'<button data-a="undo">Desfazer</button>':'');t.className='show';clearTimeout(tt);tt=setTimeout(()=>t.className='',w?7000:5000)}
 
 function vList(){
   if(!S.empresas.length)return '<p class="mut">Nenhuma empresa cadastrada. Vá em Cadastro para começar.</p>';
-  return '<h2>Escolha a empresa</h2><div class="grid">'+S.empresas.map(e=>`<button class="co" data-a="open" data-id="${e.id}">${logo(e)}<span>${esc(e.nome)}</span><small>${brl(saldo(e.id))}</small></button>`).join('')+'</div>';
+  return '<h2>Escolha a empresa</h2><div class="grid">'+S.empresas.map(e=>`<button class="co" data-a="open" data-id="${e.id}">${logo(e)}<span>${esc(e.nome)}</span><small class="${alerta(e.id)?'neg':''}">${brl(saldo(e.id))}${alerta(e.id)?' <span class="ex">!</span>':''}</small></button>`).join('')+'</div>';
 }
 function vEmp(){
   const e=S.empresas.find(x=>x.id===emp),ls=S.linhas.filter(l=>l.empresaId===emp);
   if(!ls.find(l=>l.id===lsel)){const p=new Date().getHours()<12?'Cedo':'Tarde',sg=ls.find(x=>x.horario===p);lsel=sg?sg.id:(ls.length?ls[0].id:null)}
-  const l=ls.find(x=>x.id===lsel),s=saldo(emp);
+  const l=ls.find(x=>x.id===lsel),s=saldo(emp),al=alerta(emp);
   return `<button class="back" data-a="back">← Voltar</button>
   <div class="head">${logo(e)}<b>${esc(e.nome)}</b></div>
-  <div class="saldo ${s<0?'neg':''}"><small>Saldo</small><strong>${brl(s)}</strong></div>
+  <div class="saldo ${al?'neg':''}"><small>Saldo</small><strong>${brl(s)}${al?' <span class="ex">!</span>':''}</strong></div>
   ${ls.length?`<label>Linha<select id="ls">${ls.map(x=>`<option value="${x.id}"${x.id===lsel?' selected':''}>${esc(x.origem)} → ${esc(x.destino)}</option>`).join('')}</select></label>`:'<p class="mut">Sem linhas cadastradas para esta empresa. Você ainda pode digitar o valor.</p>'}
   <label>Valor da passagem (R$)<input id="vp" inputmode="decimal" value="${l?fmt(l.valor):''}"></label>
   <button class="big" data-a="pass">Registrar passagem</button>
@@ -98,6 +107,7 @@ function vCad(){
   const dl=(k,id)=>delK===k+id?'<button class="small danger" data-a="'+k+'del" data-id="'+id+'">Confirmar?</button>':'<button class="small" data-a="'+k+'del" data-id="'+id+'">Excluir</button>';
   return `<h2>Empresas</h2>
   <div class="card"><label>Nome<input id="en" value="${esc(eE?eE.nome:'')}"></label>
+  <label>Emitir aviso para saldo igual ou inferior a X vezes a passagem<input id="ea" inputmode="decimal" value="${String(eE&&eE.aviso!=null?eE.aviso:2).replace('.',',')}"></label>
   <label>Logotipo<input id="ef" type="file" accept="image/*"></label>
   <img id="lp" class="prev" ${pv?`src="${pv}"`:'hidden'} alt="">
   <div class="row"><button class="small pri" data-a="esave">${fe.id?'Salvar alterações':'Adicionar empresa'}</button>${fe.id?'<button class="small" data-a="ecancel">Cancelar</button>':''}</div></div>
@@ -123,7 +133,7 @@ function csvOf(k){
   const q=v=>'"'+String(v).replace(/"/g,'""')+'"';let h,rows;
   if(k==='ops'){h=['Data','Empresa','Tipo','Linha','Valor'];rows=S.ops.map(o=>[new Date(o.data).toLocaleString('pt-BR'),o.empresa,o.tipo,o.linha,fmt(o.valor)])}
   else if(k==='linhas'){h=['Empresa','Origem','Destino','Valor_passagem','Horario_padrao'];rows=S.linhas.map(l=>[nm(l.empresaId),l.origem,l.destino,fmt(l.valor),l.horario||'Nenhum'])}
-  else{h=['Nome'];rows=S.empresas.map(e=>[e.nome])}
+  else{h=['Nome','Aviso_vezes_passagem'];rows=S.empresas.map(e=>[e.nome,fmt(e.aviso!=null?e.aviso:2)])}
   return [h,...rows].map(r=>r.map(q).join(';')).join('\r\n');
 }
 function readLogo(f){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,160/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/png'))};i.onerror=()=>res(null);i.src=r.result};r.onerror=()=>res(null);r.readAsDataURL(f)})}
@@ -142,13 +152,13 @@ document.addEventListener('click',ev=>{
   else if(a==='back'){emp=null;render()}
   else if(a==='pass'){
     const v=num($('#vp').value);if(!(v>0)){toast('Informe um valor válido');return}
-    addOp('passagem',v,'Passagem');render();toast('Passagem de '+brl(v)+' registrada',true);
+    addOp('passagem',v,'Passagem');render();toast('Passagem de '+brl(v)+' registrada',true,aviso());
   }
   else if(a==='rectog'){panel=panel==='rec'?null:'rec';render();const r=$('#vr');if(r)r.focus()}
   else if(a==='ajtog'){panel=panel==='aj'?null:'aj';render();const r=$('#va');if(r)r.focus()}
   else if(a==='aj'){
     const t=$('#at').value.trim()||'Ajuste',v=num($('#va').value);if(isNaN(v)||v===0){toast('Informe um valor válido, diferente de zero');return}
-    addOp('ajuste',v,t);panel=null;render();toast(t+': '+brl(v)+' registrado',true);
+    addOp('ajuste',v,t);panel=null;render();toast(t+': '+brl(v)+' registrado',true,v<0?aviso():'');
   }
   else if(a==='rec'){
     const v=num($('#vr').value);if(!(v>0)){toast('Informe um valor válido');return}
@@ -157,8 +167,9 @@ document.addEventListener('click',ev=>{
   else if(a==='undo'){S.ops=S.ops.filter(o=>o.id!==pend);pend=null;save();$('#toast').className='';render()}
   else if(a==='esave'){
     const n=$('#en').value.trim();if(!n){toast('Informe o nome da empresa');return}
-    if(fe.id){const e=S.empresas.find(x=>x.id===fe.id);e.nome=n;if(logoDraft)e.logo=logoDraft}
-    else S.empresas.push({id:uid(),nome:n,logo:logoDraft||''});
+    const raw=$('#ea').value.trim(),av=raw===''?2:num(raw);if(isNaN(av)||av<0){toast('Informe um número válido para o aviso');return}
+    if(fe.id){const e=S.empresas.find(x=>x.id===fe.id);e.nome=n;e.aviso=av;if(logoDraft)e.logo=logoDraft}
+    else S.empresas.push({id:uid(),nome:n,logo:logoDraft||'',aviso:av});
     fe={id:null};logoDraft=null;save();render();
   }
   else if(a==='eedit'){fe={id};logoDraft=null;render();$('main').scrollTop=0}
