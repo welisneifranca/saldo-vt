@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#0b6bcb">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Saldo Vale Transporte</title>
+<style>
+:root{--bg:#f4f6f9;--card:#fff;--tx:#141a22;--mut:#667085;--pri:#0b6bcb;--onpri:#fff;--neg:#c0262d;--bd:#dfe3ea;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1218;--card:#1a1f29;--tx:#eef1f6;--mut:#9aa4b5;--pri:#4d9bf0;--onpri:#04121f;--neg:#ff7b80;--bd:#2a3140;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1218;--card:#1a1f29;--tx:#eef1f6;--mut:#9aa4b5;--pri:#4d9bf0;--onpri:#04121f;--neg:#ff7b80;--bd:#2a3140;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+header{padding:14px 16px;font-weight:700;font-size:18px;background:var(--card);border-bottom:1px solid var(--bd)}
+main{flex:1;overflow-y:auto;padding:16px;width:100%;max-width:560px;margin:0 auto}
+main.kb{padding-bottom:60vh}
+nav{display:flex;background:var(--card);border-top:1px solid var(--bd)}
+nav button{flex:1;padding:14px;border:0;background:none;color:var(--mut);font:inherit;font-weight:600}
+nav button.on{color:var(--pri);box-shadow:inset 0 3px 0 var(--pri)}
+h2{font-size:13px;color:var(--mut);margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+.mut{color:var(--mut)}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.co{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--tx);font:inherit;font-weight:600}
+.co small{color:var(--mut);font-weight:500}
+.lg{width:64px;height:64px;border-radius:12px;object-fit:contain;display:flex;align-items:center;justify-content:center;background:var(--bd);font-style:normal;font-weight:700;font-size:28px;color:var(--mut)}
+.item .lg{width:40px;height:40px;font-size:18px}
+.head{display:flex;align-items:center;gap:12px;margin:8px 0}
+.head b{font-size:20px}
+.back{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:10px 18px;margin-bottom:4px;font:inherit;font-size:18px;font-weight:700;color:var(--pri);background:var(--card);border:1px solid var(--bd);border-radius:12px}
+.saldo{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;text-align:center;margin:8px 0 16px}
+.saldo small{display:block;color:var(--mut)}
+.saldo strong{font-size:40px;line-height:1.2}
+.saldo.neg strong{color:var(--neg)}
+label{display:block;margin:10px 0;color:var(--mut);font-size:14px}
+input,select{display:block;width:100%;margin-top:4px;padding:12px;font:inherit;font-size:17px;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px}
+.big{width:100%;margin:12px 0;padding:18px;font:inherit;font-size:19px;font-weight:700;border:0;border-radius:14px;background:var(--pri);color:var(--onpri)}
+.small{padding:10px 14px;font:inherit;font-size:15px;font-weight:600;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx)}
+.small.pri{background:var(--pri);color:var(--onpri);border-color:var(--pri)}
+.small.danger{color:var(--neg);border-color:var(--neg)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px 14px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px;margin:8px 0}
+.item span{flex:1;min-width:0}
+.item span small{display:block;color:var(--mut)}
+.prev{width:64px;height:64px;object-fit:contain;margin-top:6px}
+textarea{width:100%;height:140px;margin-top:10px;font:13px monospace;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px}
+#toast{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));background:#222;color:#fff;border-radius:12px;padding:12px 14px;display:none;justify-content:space-between;align-items:center;gap:8px}
+#toast.show{display:flex}
+#toast button{border:0;background:none;color:#8ec5ff;font:inherit;font-weight:700}
+</style>
+</head>
+<body>
+<header>🚌 Saldo Vale Transporte</header>
+<main id="app"></main>
+<nav><button data-t="op">Operações</button><button data-t="cad">Cadastro</button></nav>
+<div id="toast"></div>
+<script>
+const K='svt_v1';
+let S={empresas:[],linhas:[],ops:[]};
+try{const r=localStorage.getItem(K);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
+let tab='op',emp=null,lsel=null,panel=null,fe={id:null},fl={id:null},logoDraft=null,csv='',delK=null,pend=null,tt;
+const $=s=>document.querySelector(s);
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){toast('Não foi possível salvar neste navegador')}};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const fmt=v=>v.toFixed(2).replace('.',',');
+const num=s=>{s=String(s).trim();if(s.includes(','))s=s.replace(/\./g,'').replace(',','.');const n=parseFloat(s);return isNaN(n)?NaN:n};
+const saldo=id=>S.ops.filter(o=>o.empresaId===id).reduce((t,o)=>t+(o.cat==='passagem'?-o.valor:o.valor),0);
+const nm=id=>(S.empresas.find(e=>e.id===id)||{}).nome||'';
+const logo=(e,src)=>(src||e.logo)?`<img class="lg" src="${src||e.logo}" alt="">`:`<i class="lg">${esc((e.nome||'?')[0]).toUpperCase()}</i>`;
+function toast(m,u){const t=$('#toast');t.innerHTML='<span>'+esc(m)+'</span>'+(u?'<button data-a="undo">Desfazer</button>':'');t.className='show';clearTimeout(tt);tt=setTimeout(()=>t.className='',5000)}
+
+function vList(){
+  if(!S.empresas.length)return '<p class="mut">Nenhuma empresa cadastrada. Vá em Cadastro para começar.</p>';
+  return '<h2>Escolha a empresa</h2><div class="grid">'+S.empresas.map(e=>`<button class="co" data-a="open" data-id="${e.id}">${logo(e)}<span>${esc(e.nome)}</span><small>${brl(saldo(e.id))}</small></button>`).join('')+'</div>';
+}
+function vEmp(){
+  const e=S.empresas.find(x=>x.id===emp),ls=S.linhas.filter(l=>l.empresaId===emp);
+  if(!ls.find(l=>l.id===lsel)){const p=new Date().getHours()<12?'Cedo':'Tarde',sg=ls.find(x=>x.horario===p);lsel=sg?sg.id:(ls.length?ls[0].id:null)}
+  const l=ls.find(x=>x.id===lsel),s=saldo(emp);
+  return `<button class="back" data-a="back">← Voltar</button>
+  <div class="head">${logo(e)}<b>${esc(e.nome)}</b></div>
+  <div class="saldo ${s<0?'neg':''}"><small>Saldo</small><strong>${brl(s)}</strong></div>
+  ${ls.length?`<label>Linha<select id="ls">${ls.map(x=>`<option value="${x.id}"${x.id===lsel?' selected':''}>${esc(x.origem)} → ${esc(x.destino)}</option>`).join('')}</select></label>`:'<p class="mut">Sem linhas cadastradas para esta empresa. Você ainda pode digitar o valor.</p>'}
+  <label>Valor da passagem (R$)<input id="vp" inputmode="decimal" value="${l?fmt(l.valor):''}"></label>
+  <button class="big" data-a="pass">Registrar passagem</button>
+  <div class="row"><button class="small" data-a="rectog">+ Registrar recarga</button><button class="small" data-a="ajtog">± Registrar ajuste</button></div>
+  ${panel==='rec'?'<div class="card" style="margin-top:10px"><label>Valor da recarga (R$)<input id="vr" inputmode="decimal"></label><button class="small pri" data-a="rec">Confirmar recarga</button></div>':''}
+  ${panel==='aj'?'<div class="card" style="margin-top:10px"><label>Descrição (vai para o campo Tipo)<input id="at" value="Ajuste"></label><label>Valor (R$). Use o sinal de menos para saída<input id="va" placeholder="-10,00 ou 5,00"></label><button class="small pri" data-a="aj">Confirmar ajuste</button></div>':''}`;
+}
+function vCad(){
+  const eE=S.empresas.find(x=>x.id===fe.id),lE=S.linhas.find(x=>x.id===fl.id),pv=logoDraft||(eE&&eE.logo)||'';
+  const dl=(k,id)=>delK===k+id?'<button class="small danger" data-a="'+k+'del" data-id="'+id+'">Confirmar?</button>':'<button class="small" data-a="'+k+'del" data-id="'+id+'">Excluir</button>';
+  return `<h2>Empresas</h2>
+  <div class="card"><label>Nome<input id="en" value="${esc(eE?eE.nome:'')}"></label>
+  <label>Logotipo<input id="ef" type="file" accept="image/*"></label>
+  <img id="lp" class="prev" ${pv?`src="${pv}"`:'hidden'} alt="">
+  <div class="row"><button class="small pri" data-a="esave">${fe.id?'Salvar alterações':'Adicionar empresa'}</button>${fe.id?'<button class="small" data-a="ecancel">Cancelar</button>':''}</div></div>
+  ${S.empresas.map(e=>`<div class="item">${logo(e)}<span>${esc(e.nome)}</span><button class="small" data-a="eedit" data-id="${e.id}">Editar</button>${dl('e',e.id)}</div>`).join('')}
+  ${delK&&delK[0]==='e'?'<p class="mut">Excluir a empresa apaga também suas linhas e seu histórico.</p>':''}
+  <h2>Linhas</h2>
+  ${S.empresas.length?`<div class="card"><label>Empresa<select id="lE">${S.empresas.map(e=>`<option value="${e.id}"${lE&&lE.empresaId===e.id?' selected':''}>${esc(e.nome)}</option>`).join('')}</select></label>
+  <label>Origem<input id="lo" value="${esc(lE?lE.origem:'')}"></label>
+  <label>Destino<input id="ld" value="${esc(lE?lE.destino:'')}"></label>
+  <label>Valor da passagem (R$)<input id="lv" inputmode="decimal" value="${lE?fmt(lE.valor):''}"></label>
+  <label>Horário padrão<select id="lh">${['Nenhum','Cedo','Tarde'].map(h=>`<option${((lE&&lE.horario)||'Nenhum')===h?' selected':''}>${h}</option>`).join('')}</select></label>
+  <div class="row"><button class="small pri" data-a="lsave">${fl.id?'Salvar alterações':'Adicionar linha'}</button>${fl.id?'<button class="small" data-a="lcancel">Cancelar</button>':''}</div></div>`:'<p class="mut">Cadastre uma empresa primeiro.</p>'}
+  ${S.linhas.map(l=>`<div class="item"><span>${esc(l.origem)} → ${esc(l.destino)}<small>${esc(nm(l.empresaId))} · ${brl(l.valor)}${l.horario&&l.horario!=='Nenhum'?' · '+l.horario:''}</small></span><button class="small" data-a="ledit" data-id="${l.id}">Editar</button>${dl('l',l.id)}</div>`).join('')}
+  <h2>Exportar CSV</h2>
+  <div class="row"><button class="small" data-a="exp" data-id="ops">Operações</button><button class="small" data-a="exp" data-id="linhas">Linhas</button><button class="small" data-a="exp" data-id="empresas">Empresas</button></div>
+  ${csv?'<textarea id="csvt" readonly>'+esc(csv)+'</textarea><div class="row"><button class="small" data-a="copy">Copiar texto</button></div>':''}`;
+}
+function render(){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+  $('#app').innerHTML=tab==='op'?(emp?vEmp():vList()):vCad();
+}
+function csvOf(k){
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';let h,rows;
+  if(k==='ops'){h=['Data','Empresa','Tipo','Linha','Valor'];rows=S.ops.map(o=>[new Date(o.data).toLocaleString('pt-BR'),o.empresa,o.tipo,o.linha,fmt(o.valor)])}
+  else if(k==='linhas'){h=['Empresa','Origem','Destino','Valor_passagem','Horario_padrao'];rows=S.linhas.map(l=>[nm(l.empresaId),l.origem,l.destino,fmt(l.valor),l.horario||'Nenhum'])}
+  else{h=['Nome'];rows=S.empresas.map(e=>[e.nome])}
+  return [h,...rows].map(r=>r.map(q).join(';')).join('\r\n');
+}
+function readLogo(f){return new Promise(res=>{const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,160/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/png'))};i.onerror=()=>res(null);i.src=r.result};r.onerror=()=>res(null);r.readAsDataURL(f)})}
+function addOp(cat,v,tipo){
+  const e=S.empresas.find(x=>x.id===emp),l=S.linhas.find(x=>x.id===lsel);
+  const o={id:uid(),cat,tipo,valor:v,data:new Date().toISOString(),empresaId:emp,empresa:e?e.nome:'',linha:cat==='passagem'&&l?l.origem+' → '+l.destino:''};
+  S.ops.push(o);pend=o.id;save();return o;
+}
+
+document.addEventListener('click',ev=>{
+  const b=ev.target.closest('[data-a],[data-t]');if(!b)return;
+  const a=b.dataset.a,id=b.dataset.id;
+  if(b.dataset.t){tab=b.dataset.t;emp=null;delK=null;render();return}
+  if(a!=='edel'&&a!=='ldel')delK=null;
+  if(a==='open'){emp=id;lsel=null;panel=null;render()}
+  else if(a==='back'){emp=null;render()}
+  else if(a==='pass'){
+    const v=num($('#vp').value);if(!(v>0)){toast('Informe um valor válido');return}
+    addOp('passagem',v,'Passagem');render();toast('Passagem de '+brl(v)+' registrada',true);
+  }
+  else if(a==='rectog'){panel=panel==='rec'?null:'rec';render();const r=$('#vr');if(r)r.focus()}
+  else if(a==='ajtog'){panel=panel==='aj'?null:'aj';render();const r=$('#va');if(r)r.focus()}
+  else if(a==='aj'){
+    const t=$('#at').value.trim()||'Ajuste',v=num($('#va').value);if(isNaN(v)||v===0){toast('Informe um valor válido, diferente de zero');return}
+    addOp('ajuste',v,t);panel=null;render();toast(t+': '+brl(v)+' registrado',true);
+  }
+  else if(a==='rec'){
+    const v=num($('#vr').value);if(!(v>0)){toast('Informe um valor válido');return}
+    addOp('recarga',v,'Recarga');panel=null;render();toast('Recarga de '+brl(v)+' registrada',true);
+  }
+  else if(a==='undo'){S.ops=S.ops.filter(o=>o.id!==pend);pend=null;save();$('#toast').className='';render()}
+  else if(a==='esave'){
+    const n=$('#en').value.trim();if(!n){toast('Informe o nome da empresa');return}
+    if(fe.id){const e=S.empresas.find(x=>x.id===fe.id);e.nome=n;if(logoDraft)e.logo=logoDraft}
+    else S.empresas.push({id:uid(),nome:n,logo:logoDraft||''});
+    fe={id:null};logoDraft=null;save();render();
+  }
+  else if(a==='eedit'){fe={id};logoDraft=null;render();$('main').scrollTop=0}
+  else if(a==='ecancel'){fe={id:null};logoDraft=null;render()}
+  else if(a==='lsave'){
+    const ep=$('#lE').value,o=$('#lo').value.trim(),d=$('#ld').value.trim(),v=num($('#lv').value),hr=$('#lh').value;
+    if(!ep||!o||!d||!(v>=0)){toast('Preencha todos os campos da linha');return}
+    if(fl.id){const l=S.linhas.find(x=>x.id===fl.id);Object.assign(l,{empresaId:ep,origem:o,destino:d,valor:v,horario:hr})}
+    else S.linhas.push({id:uid(),empresaId:ep,origem:o,destino:d,valor:v,horario:hr});
+    fl={id:null};save();render();
+  }
+  else if(a==='ledit'){fl={id};render();$('#lo').scrollIntoView({block:'center'})}
+  else if(a==='lcancel'){fl={id:null};render()}
+  else if(a==='edel'||a==='ldel'){
+    const k=a[0]+id;if(delK!==k){delK=k;render();return}
+    delK=null;
+    if(a==='edel'){S.empresas=S.empresas.filter(x=>x.id!==id);S.linhas=S.linhas.filter(x=>x.empresaId!==id);S.ops=S.ops.filter(x=>x.empresaId!==id)}
+    else S.linhas=S.linhas.filter(x=>x.id!==id);
+    save();render();
+  }
+  else if(a==='exp'){
+    csv=csvOf(id);
+    try{const u=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const l=document.createElement('a');l.href=u;l.download='vale-transporte-'+id+'.csv';document.body.appendChild(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000)}catch(e){}
+    render();
+  }
+  else if(a==='copy'){
+    const t=$('#csvt');
+    (navigator.clipboard?navigator.clipboard.writeText(csv):Promise.reject()).then(()=>toast('Copiado')).catch(()=>{t.select();try{document.execCommand('copy');toast('Copiado')}catch(e){}});
+  }
+});
+const isF=t=>/^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)&&t.type!=='file';
+function fit(t){const c=t.closest('.card')||t,vv=window.visualViewport,lim=vv?vv.offsetTop+vv.height:innerHeight,r=c.getBoundingClientRect();if(r.bottom>lim-8||r.top<0)c.scrollIntoView({block:'start',behavior:'smooth'})}
+let kbT;
+document.addEventListener('focusin',ev=>{const t=ev.target;if(!isF(t))return;clearTimeout(kbT);$('main').classList.add('kb');setTimeout(()=>fit(t),400)});
+document.addEventListener('focusout',()=>{kbT=setTimeout(()=>$('main').classList.remove('kb'),250)});
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>{const t=document.activeElement;if(t&&isF(t))fit(t)});
+document.addEventListener('change',async ev=>{
+  const t=ev.target;
+  if(t.id==='ls'){lsel=t.value;const l=S.linhas.find(x=>x.id===lsel);if(l)$('#vp').value=fmt(l.valor)}
+  else if(t.id==='ef'&&t.files[0]){const d=await readLogo(t.files[0]);if(d){logoDraft=d;const p=$('#lp');p.src=d;p.hidden=false}else toast('Imagem inválida')}
+});
+(function(){let ch=0;S.ops.forEach(o=>{if(!o.cat){o.cat=o.tipo;o.tipo=o.cat==='recarga'?'Recarga':'Passagem';ch=1}if(o.empresa===undefined){o.empresa=nm(o.empresaId);const l=S.linhas.find(x=>x.id===o.linhaId);o.linha=l?l.origem+' → '+l.destino:'';ch=1}});if(ch)save()})();
+render();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
